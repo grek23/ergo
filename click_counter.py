@@ -4,19 +4,10 @@ from pynput.keyboard import Key as keyboard_key
 import numpy as np
 import matplotlib.pyplot as plt
 
-clicks = 0
-distance = 0
-prev_x = 0
-prev_y = 0
-data = []
 
-
-def distance(x, y):
-    global clicks
-
-    if clicks == 0:
-        return 0
-    return int(np.sqrt((x - prev_x)**2 + (y - prev_y)**2))
+m_data = []
+k_data = []
+valid = True
 
 
 def on_move(x, y):
@@ -24,19 +15,11 @@ def on_move(x, y):
 
 
 def on_click(x, y, button, pressed):
-    if pressed:
-        global clicks
-        global distance
-        global prev_x
-        global prev_y
-        global data
+    global m_data
 
-        clicks += 1
-        Dist = distance(x, y)
-        data.append([x, y, Dist])
-        prev_x = x
-        prev_y = y
-        print(f"Clicks = {clicks}, distance = {Dist}")
+    if pressed:
+        m_data.append([x, y, button])
+        print(f"clicky: x = {x}, y = {y}")
 
 
 def on_scroll(x, y, dx, dy):
@@ -48,35 +31,65 @@ def on_press(key):
 
 
 def on_release(key):
-    global clicks
-    global data
-
+    global k_data
+    global valid
+    print(f"key <{key}>")
     try:
-        if (key.char == 'a') or (key == keyboard_key.f2):
-            print("", end='')
-    except:
         if key == keyboard_key.f2:
-            print("Killing on exception F2")
-            mouse_listener.stop()
-            keyboard_listener.stop()
-            mouse_listener.stop()
-            print(f"data = {data}")
-            X = []
-            Y = []
-            for i in data:
-                X.append(i[0])
-            for j in data:
-                Y.append(j[1]*-1)
-            print(f"x = {X}")
-            print(f"Y = {Y}")
-            plt.figure()
-            plt.plot(X, Y, '*')
-            plt.show()
-        pass
+            print(f"F2 pressed {key}")
+            k_data.append(key)
+
+            valid = False
+            return False
+    except:
+        print("Exception")
+
+    return False
 
 
-with KeyboardListener(on_press=on_press, on_release=on_release) as keyboard_listener:
-    mouse_listener = MouseListener(
-        on_move=on_move, on_click=on_click, on_scroll=on_scroll)
-    mouse_listener.start()
-    keyboard_listener.join()
+def get_coords(data):
+    x = []
+    y = []
+    for d in data:
+        x.append(int(d[0]))
+        y.append(int(d[1]))
+    return x, y, len(data)
+
+
+def plotting(x, y):
+
+    plt.figure()
+    plt.plot(x, y, "*")
+    plt.show()
+
+
+def main():
+    global m_data
+    global k_data
+    global valid
+
+    print("Counting mouse Clicks")
+    print("Press F2 to exit")
+
+    while valid:
+        with KeyboardListener(on_press=on_press, on_release=on_release) as k_listen:
+            mouse_listener = MouseListener(
+                on_move=on_move, on_click=on_click, on_scroll=on_scroll)
+            mouse_listener.start()
+            k_listen.join()
+
+        if not valid:
+            k_listen.stop()
+            mouse_listener.stop()
+
+    x, y, totals = get_coords(m_data)
+
+    print(f"Total number of clicks: {totals}")
+    print(x)
+    print(y)
+
+    plotting(x, y)
+
+
+if __name__ == '__main__':
+    main()
